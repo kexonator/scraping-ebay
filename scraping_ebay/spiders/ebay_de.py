@@ -8,8 +8,9 @@ class EbaySpider(scrapy.Spider):
     start_urls = ["https://www.ebay.de"]
 
     # Allow a custom parameter (-a flag in the scrapy command)
-    def __init__(self, search="nintendo switch console"):
+    def __init__(self, search="nintendo switch console", custom_params=""):
         self.search_string = search
+        self.custom_params = custom_params
 
     def parse(self, response):
         # Extrach the trksid to build a search request
@@ -17,8 +18,7 @@ class EbaySpider(scrapy.Spider):
 
         # Build the url and start the requests
         yield scrapy.Request("http://www.ebay.de/sch/i.html?_from=R40&_trksid=" + trksid +
-                             "&_nkw=" + self.search_string.replace(' ', '+') + "&_ipg=200" +
-							 "&LH_BIN=1&_udlo=95&_udhi=96",
+                             "&_nkw=" + self.search_string.replace(' ', '+') + "&_ipg=200" + self.custom_params,
                              callback=self.parse_link)
 
     # Parse the search results
