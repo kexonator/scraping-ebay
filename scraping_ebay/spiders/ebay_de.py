@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import scrapy
-
+import re
+import result_handler
+import datetime
 
 class EbaySpider(scrapy.Spider):
     name = "ebay_de"
@@ -11,6 +13,7 @@ class EbaySpider(scrapy.Spider):
     def __init__(self, search="nintendo switch console", custom_params=""):
         self.search_string = search
         self.custom_params = custom_params
+        self.parsed_results = []
 
     def parse(self, response):
         # Extrach the trksid to build a search request
@@ -25,6 +28,8 @@ class EbaySpider(scrapy.Spider):
     def parse_link(self, response):
         # Extract the list of products
         results = response.xpath('//div/div/ul/li[contains(@class, "s-item" )]')
+        search_string = re.findall(r'&_nkw=(.*?)&', response.url)[0].replace('+', ' ')
+        parsed_results = self.parsed_results
 
         # Extract info for each product
         for product in results:
@@ -46,6 +51,8 @@ class EbaySpider(scrapy.Spider):
             seller_level = product.xpath('.//*[@class="s-item__etrs-text"]/text()').extract_first()
             location = product.xpath('.//*[@class="s-item__location s-item__itemLocation"]/text()').extract_first()
             product_url = product.xpath('.//a[@class="s-item__link"]/@href').extract_first()
+            item_no = int(re.findall(r'/(\d+)\?', product_url)[0])
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             # Set default values
             stars = 0
@@ -64,8 +71,12 @@ class EbaySpider(scrapy.Spider):
                 "Price": price,
                 "Stars": stars,
                 "Ratings": ratings,
-                "URL": product_url
+                "URL": product_url,
+                "Item No": item_no,
+                "timestamp": timestamp
             }
+
+            parsed_results.append(summary_data)
 
             # Go to the product details page
             data = {'summary_data': summary_data}
@@ -77,6 +88,7 @@ class EbaySpider(scrapy.Spider):
         # The last page do not have a valid url and ends with '#'
         if next_page_url == None or str(next_page_url).endswith("#"):
             self.log("eBay products collected successfully !!!")
+            result_handler.handle_result(search_string, parsed_results)
         else:
             print('\n' + '-' * 30)
             print('Next page: {}'.format(next_page_url))
